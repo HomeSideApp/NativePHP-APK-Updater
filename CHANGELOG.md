@@ -17,3 +17,10 @@ All notable changes to this project are documented here. The format follows
 - `REQUEST_INSTALL_PACKAGES` declared through the plugin manifest, so the
   compiler merges it into the app.
 - Errors returned as `error`/`message` pairs instead of exceptions.
+- Testing helpers for host apps: `withApkUpdaterDownloaded()`,
+  `withApkUpdaterStatus()`, `withApkUpdaterDownloadError()`,
+  `withApkUpdaterInstallError()` and the `assertApkUpdater*` / `assertNoApkUpdaterCalls`
+  macros.
+- `ApkUpdaterLogic`: every decision in the Android layer (percentage maths, id
+  parsing, checksum comparison, filename sanitising, state mapping) as pure
+  Kotlin, with a JVM test module under `tests/native` that needs no emulator.

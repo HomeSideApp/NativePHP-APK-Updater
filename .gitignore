@@ -4,3 +4,7 @@ composer.lock
 .phpunit.result.cache
 .DS_Store
 .idea
+
+# Módulo Gradle de tests de la lógica Kotlin
+/tests/native/build
+/tests/native/.gradle

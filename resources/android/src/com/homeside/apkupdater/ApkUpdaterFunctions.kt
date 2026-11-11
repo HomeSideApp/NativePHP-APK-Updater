@@ -43,9 +43,10 @@ object ApkUpdaterFunctions {
                 return error("missing_url", "No URL was provided.")
             }
 
-            val fileName = (parameters["file_name"] as? String)?.takeIf { it.isNotBlank() }
-                ?: "update.apk"
-            val sha256 = (parameters["sha256"] as? String)?.lowercase()?.takeIf { it.isNotBlank() }
+            val fileName = ApkUpdaterLogic.safeFileName(parameters["file_name"] as? String)
+            val sha256 = (parameters["sha256"] as? String)
+                ?.lowercase()
+                ?.takeIf { ApkUpdaterLogic.isValidSha256(it) }
             val title = (parameters["title"] as? String) ?: "Downloading update"
 
             return try {
@@ -81,7 +82,8 @@ object ApkUpdaterFunctions {
     /** `ApkUpdater.Status` — params: id */
     class Status(private val context: FragmentActivity) : BridgeFunction {
         override fun execute(parameters: Map<String, Any>): Map<String, Any> {
-            val id = idOf(parameters) ?: return error("missing_id", "No download id was provided.")
+            val id = ApkUpdaterLogic.parseId(parameters["id"])
+                ?: return error("missing_id", "No download id was provided.")
             val manager =
                 context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
@@ -100,13 +102,10 @@ object ApkUpdaterFunctions {
                     val total = cursor.getLong(
                         cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
                     )
-                    val progress =
-                        if (total > 0) ((downloaded * 100) / total).toInt() else 0
-
                     val result = mutableMapOf<String, Any>(
                         "id" to id.toString(),
-                        "status" to statusName(status),
-                        "progress" to progress.coerceIn(0, 100)
+                        "status" to ApkUpdaterLogic.stateName(stateOf(status)),
+                        "progress" to ApkUpdaterLogic.progress(downloaded, total)
                     )
 
                     if (status == DownloadManager.STATUS_FAILED) {
@@ -127,7 +126,8 @@ object ApkUpdaterFunctions {
     /** `ApkUpdater.Install` — params: id */
     class Install(private val context: FragmentActivity) : BridgeFunction {
         override fun execute(parameters: Map<String, Any>): Map<String, Any> {
-            val id = idOf(parameters) ?: return error("missing_id", "No download id was provided.")
+            val id = ApkUpdaterLogic.parseId(parameters["id"])
+                ?: return error("missing_id", "No download id was provided.")
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                 !context.packageManager.canRequestPackageInstalls()
@@ -175,7 +175,8 @@ object ApkUpdaterFunctions {
     /** `ApkUpdater.Clear` — params: id */
     class Clear(private val context: FragmentActivity) : BridgeFunction {
         override fun execute(parameters: Map<String, Any>): Map<String, Any> {
-            val id = idOf(parameters) ?: return error("missing_id", "No download id was provided.")
+            val id = ApkUpdaterLogic.parseId(parameters["id"])
+                ?: return error("missing_id", "No download id was provided.")
 
             return try {
                 val manager =
@@ -213,23 +214,14 @@ object ApkUpdaterFunctions {
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private fun statusName(status: Int): String = when (status) {
-        DownloadManager.STATUS_PENDING -> "pending"
-        DownloadManager.STATUS_RUNNING -> "running"
-        DownloadManager.STATUS_PAUSED -> "paused"
-        DownloadManager.STATUS_SUCCESSFUL -> "successful"
-        DownloadManager.STATUS_FAILED -> "failed"
-        else -> "unknown"
-    }
-
-    private fun idOf(parameters: Map<String, Any>): Long? {
-        val raw = parameters["id"] ?: return null
-
-        return when (raw) {
-            is Number -> raw.toLong()
-            is String -> raw.toLongOrNull()
-            else -> null
-        }
+    /** Traduce las constantes de Android al enum puro, una sola vez. */
+    private fun stateOf(status: Int): DownloadState = when (status) {
+        DownloadManager.STATUS_PENDING -> DownloadState.Pending
+        DownloadManager.STATUS_RUNNING -> DownloadState.Running
+        DownloadManager.STATUS_PAUSED -> DownloadState.Paused
+        DownloadManager.STATUS_SUCCESSFUL -> DownloadState.Successful
+        DownloadManager.STATUS_FAILED -> DownloadState.Failed
+        else -> DownloadState.Unknown
     }
 
     private fun remember(context: Context, id: Long, sha256: String?, fileName: String) {
@@ -269,7 +261,7 @@ object ApkUpdaterFunctions {
                     digest.update(buffer, 0, read)
                     read = stream.read(buffer)
                 }
-                digest.digest().joinToString("") { "%02x".format(it) }
+                ApkUpdaterLogic.toHex(digest.digest())
             }
         } catch (exception: Exception) {
             null
@@ -279,7 +271,7 @@ object ApkUpdaterFunctions {
             return error("checksum_unreadable", "Could not read the downloaded file.")
         }
 
-        if (!actual.equals(expected, ignoreCase = true)) {
+        if (!ApkUpdaterLogic.checksumMatches(actual, expected)) {
             try {
                 val manager =
                     context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager

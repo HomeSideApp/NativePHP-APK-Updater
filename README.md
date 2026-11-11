@@ -166,6 +166,63 @@ that usually make this plugin-shaped problem bigger than it is.
 - The download is managed by the system, so progress UI in your app is polling
   (`status()`), not a stream of events.
 
+## Testing
+
+Three layers, ordered by how fast they fail:
+
+| Layer | Command | What it covers |
+|---|---|---|
+| **Pure Kotlin logic** (JVM, no Android) | `cd tests/native && ./gradlew test` | percentage maths, id parsing, checksum comparison, filename sanitising, the state enum |
+| **PHP contract** (fake `nativephp_call`) | `composer test` | payload shapes, error mapping, argument validation, the platform guard |
+| **App integration** (your suite) | `withApkUpdaterDownloaded()` … | that *your* screen reacts to the download and the installer |
+
+The Kotlin module compiles `resources/android/src/.../ApkUpdaterLogic.kt` —the
+file that holds every decision— and runs it with plain JUnit. It does not need
+the Android SDK, an emulator, or Robolectric; a full run takes a few seconds.
+
+```bash
+composer install && composer test    # 17 PHP tests
+cd tests/native && ./gradlew test    # 9 Kotlin tests
+composer lint                        # Pint
+```
+
+### What those tests already caught
+
+`parseId()` accepted `3.5` and silently truncated it to `3`, and
+`safeFileName()` could return a 124-character name without the `.apk` suffix for
+a long input. Both were invisible until the assertions ran.
+
+### Helper macros for your app
+
+The provider registers them automatically; no test setup needed beyond NativePHP's
+own harness:
+
+```php
+Native::fakeBridge()
+    ->withApkUpdaterDownloaded(id: '7')
+    ->withApkUpdaterStatus(status: 'successful', progress: 100, id: '7');
+
+Native::test(Profile::class)
+    ->press('Descargar actualización')
+    ->assertApkUpdaterDownloaded('https://example.test/app.apk')
+    ->assertApkUpdaterInstalled('7');
+```
+
+Also available: `withApkUpdaterDownloadError()`, `withApkUpdaterInstallError()`,
+`assertApkUpdaterSettingsOpened()`, `assertNoApkUpdaterCalls()`.
+
+### What still needs a device
+
+The installer UI, the *install unknown apps* toggle, a keystore mismatch and the
+download surviving process death. A checklist:
+
+1. Download with the app in the foreground — progress shows in your UI.
+2. Background the app mid-download — it keeps going and notifies.
+3. Install with the permission granted — Android's installer opens.
+4. Revoke the permission — you get `unknown_sources_disabled` and the settings jump.
+5. Serve an APK whose bytes differ from the published SHA-256 — `checksum_mismatch`, file deleted.
+6. Install an APK signed with a different key — Android refuses; it needs an uninstall first.
+
 ## Development
 
 ```bash
@@ -173,9 +230,6 @@ composer install
 composer test        # PHPUnit
 composer lint        # Pint
 ```
-
-The suite exercises the PHP side against a fake `nativephp_call()`, so it runs
-without Laravel or a device.
 
 ## License
 
