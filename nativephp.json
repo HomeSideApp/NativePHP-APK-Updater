@@ -1,0 +1,39 @@
+{
+    "namespace": "ApkUpdater",
+    "platforms": [
+        "android"
+    ],
+    "bridge_functions": [
+        {
+            "name": "ApkUpdater.Download",
+            "android": "com.homeside.apkupdater.ApkUpdaterFunctions.Download",
+            "description": "Enqueue an APK download through the system DownloadManager"
+        },
+        {
+            "name": "ApkUpdater.Status",
+            "android": "com.homeside.apkupdater.ApkUpdaterFunctions.Status",
+            "description": "Report progress and state of a download"
+        },
+        {
+            "name": "ApkUpdater.Install",
+            "android": "com.homeside.apkupdater.ApkUpdaterFunctions.Install",
+            "description": "Verify the checksum and open the system package installer"
+        },
+        {
+            "name": "ApkUpdater.Clear",
+            "android": "com.homeside.apkupdater.ApkUpdaterFunctions.Clear",
+            "description": "Remove a download and its file"
+        },
+        {
+            "name": "ApkUpdater.OpenSettings",
+            "android": "com.homeside.apkupdater.ApkUpdaterFunctions.OpenSettings",
+            "description": "Open the 'install unknown apps' settings for this app"
+        }
+    ],
+    "android": {
+        "min_version": 26,
+        "permissions": [
+            "android.permission.REQUEST_INSTALL_PACKAGES"
+        ]
+    }
+}

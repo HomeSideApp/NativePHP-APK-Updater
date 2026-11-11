@@ -1,0 +1,60 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "homeside/apk-updater",
+    "description": "Self-hosted APK updates for NativePHP Mobile on Android: download, verify and hand the system installer an update, with no Play Store involved.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "nativephp",
+        "nativephp-mobile",
+        "android",
+        "apk",
+        "updater",
+        "ota"
+    ],
+    "homepage": "https://github.com/HomeSideApp/nativephp-apk-updater",
+    "authors": [
+        {
+            "name": "HomeSide contributors",
+            "homepage": "https://github.com/HomeSideApp"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "nativephp/mobile": "^4.6"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.27",
+        "phpunit/phpunit": "^11.5|^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Homeside\\ApkUpdater\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Homeside\\ApkUpdater\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Homeside\\ApkUpdater\\ApkUpdaterServiceProvider"
+            ],
+            "aliases": {
+                "ApkUpdater": "Homeside\\ApkUpdater\\Facades\\ApkUpdater"
+            }
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "lint": "pint",
+        "test:lint": "pint --test"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
