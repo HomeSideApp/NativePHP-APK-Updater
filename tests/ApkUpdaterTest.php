@@ -117,6 +117,16 @@ final class ApkUpdaterTest extends TestCase
         $this->assertSame('{}', $calls[1]['payload']);
     }
 
+    public function test_opening_the_settings_never_throws(): void
+    {
+        $GLOBALS['apk_updater_response'] = '';
+
+        $result = $this->updater->openInstallSettings();
+
+        $this->assertSame('no_response', $result['error']);
+        $this->assertSame('ApkUpdater.OpenSettings', $this->lastCall()['function']);
+    }
+
     public function test_the_platform_check_reports_android_only(): void
     {
         $this->assertTrue($this->updater->isSupported());

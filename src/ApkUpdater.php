@@ -91,11 +91,15 @@ final class ApkUpdater
      * Sends the user to "Install unknown apps" for this application, which is
      * where they have to grant the permission the installer needs.
      *
+     * Es "disparar y olvidar": si el lado nativo no contesta (una app vieja sin
+     * la función, un bridge que falló), devolver un error es mejor que tirar una
+     * excepción desde el camino que ya está manejando otro error.
+     *
      * @return array<string, string>
      */
     public function openInstallSettings(): array
     {
-        return $this->call('ApkUpdater.OpenSettings');
+        return $this->callOrNothing('ApkUpdater.OpenSettings');
     }
 
     /**
@@ -154,6 +158,21 @@ final class ApkUpdater
             : (string) json_encode($value), $decoded);
 
         return $normalized;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function callOrNothing(string $function): array
+    {
+        try {
+            return $this->call($function);
+        } catch (RuntimeException) {
+            return [
+                'error' => 'no_response',
+                'message' => 'The native side did not answer.',
+            ];
+        }
     }
 
     private function isSha256(string $value): bool
