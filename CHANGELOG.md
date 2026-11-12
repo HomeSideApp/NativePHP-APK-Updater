@@ -17,6 +17,9 @@ All notable changes to this project are documented here. The format follows
 - `REQUEST_INSTALL_PACKAGES` declared through the plugin manifest, so the
   compiler merges it into the app.
 - Errors returned as `error`/`message` pairs instead of exceptions.
+- `composer.json` declares `"type": "nativephp-plugin"`. Anything else makes
+  NativePHP's plugin discovery ignore the package: it installs and autoloads,
+  but its Kotlin never reaches the build.
 - Testing helpers for host apps: `withApkUpdaterDownloaded()`,
   `withApkUpdaterStatus()`, `withApkUpdaterDownloadError()`,
   `withApkUpdaterInstallError()` and the `assertApkUpdater*` / `assertNoApkUpdaterCalls`

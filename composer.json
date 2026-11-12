@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "homeside/apk-updater",
     "description": "Self-hosted APK updates for NativePHP Mobile on Android: download, verify and hand the system installer an update, with no Play Store involved.",
-    "type": "library",
+    "type": "nativephp-plugin",
     "license": "MIT",
     "keywords": [
         "nativephp",
