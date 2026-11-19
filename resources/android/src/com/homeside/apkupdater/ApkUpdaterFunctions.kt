@@ -33,6 +33,7 @@ import java.security.MessageDigest
 object ApkUpdaterFunctions {
 
     private const val PREFS = "homeside_apk_updater"
+    private const val KEY_LAST_ID = "last_id"
     private const val MIME_APK = "application/vnd.android.package-archive"
 
     /** `ApkUpdater.Download` — params: url, file_name?, sha256?, title? */
@@ -50,6 +51,30 @@ object ApkUpdaterFunctions {
             val title = (parameters["title"] as? String) ?: "Downloading update"
 
             return try {
+                val manager =
+                    context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+
+                // A retry uses the same destination name, and the manager
+                // refuses to write over a file that already exists: it fails
+                // with ERROR_FILE_ALREADY_EXISTS (488) before moving a byte.
+                // The leftover from an interrupted attempt would therefore
+                // block every future update of that version. Cancel the
+                // previous attempt first so a half-finished download cannot
+                // keep writing into the file we are about to reuse.
+                previousId(context)?.let { previous ->
+                    runCatching { manager.remove(previous) }
+                    forget(context, previous)
+                }
+
+                val destination = File(
+                    context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+                    fileName
+                )
+
+                if (destination.exists()) {
+                    runCatching { destination.delete() }
+                }
+
                 val request = DownloadManager.Request(Uri.parse(url))
                     .setTitle(title)
                     .setMimeType(MIME_APK)
@@ -62,8 +87,6 @@ object ApkUpdaterFunctions {
                         fileName
                     )
 
-                val manager =
-                    context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                 val id = manager.enqueue(request)
 
                 remember(context, id, sha256, fileName)
@@ -227,11 +250,19 @@ object ApkUpdaterFunctions {
     private fun remember(context: Context, id: Long, sha256: String?, fileName: String) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
         prefs.putString("file_$id", fileName)
+        prefs.putString(KEY_LAST_ID, id.toString())
         if (sha256 != null) {
             prefs.putString("sha_$id", sha256)
         }
         prefs.apply()
     }
+
+    /** The attempt this download replaces, if any, so a retry can clean it up. */
+    private fun previousId(context: Context): Long? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_LAST_ID, null)
+            ?.toLongOrNull()
+            ?.takeIf { it > 0L }
 
     private fun forget(context: Context, id: Long) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
